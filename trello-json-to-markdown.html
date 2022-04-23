@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trello json to Markdown</title>
+    <style>
+        .container {
+            column-gap: 50px;
+            display: flex;
+        }
+        .box {
+            flex-basis: 0;
+            flex-grow: 1;
+            flex-shrink: 1;
+        }
+        textarea {
+            box-sizing: border-box;
+            resize: vertical;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+    <h1>Trello JSON to Markdown</h1>
+    <div class="container">
+        <div class="box">
+            <h2>Input: Trello JSON</h2>
+            <textarea id="trello" rows="30"></textarea>
+        </div>
+        <div class="box">
+            <h2>Parameters</h2>
+            <form>
+                <fieldset>
+                    <legend>Kanban Obsidian Plugin</legend>
+                    <p>
+                        <label for="kanban-obsidian-plugin-header-footer">Add Kanban Obsidian Plugin header and footer<input type="checkbox" id="kanban-obsidian-plugin-header-footer"></label>
+                    </p>
+                </fieldset>
+                <fieldset>
+                    <legend>Labels</legend>
+                    <p><label for="import-labels-as-obsidian-tags">Import labels as Obsdian Tag<input type="checkbox" id="import-labels-as-obsidian-tags"></label></p>
+                    <p><label for="prefix-tag">prefix tag</label> <input type="text" id="prefix-tag"></p>
+                    <p><label for="suffix-tag">suffix tag</label> <input type="text" id="suffix-tag"></p>
+                </fieldset>
+                <fieldset>
+                    <legend>Checklists</legend>
+                    <p><label for="import-checklists">Import checklists<input type="checkbox" id="import-checklists"></label></p>
+                    <p><label for="format-checklists-for-kanban-obsidian-plugin">Format checklists for Kanban Obsidian Plugin<input type="checkbox" id="format-checklists-for-kanban-obsidian-plugin"></label></p>
+                </fieldset>
+                <fieldset>
+                    <legend>Comments</legend>
+                    <p><label for="import-comments">Import comments<input type="checkbox" id="import-comments"></label></p>
+                </fieldset>
+                <fieldset>
+                    <legend>Archives</legend>
+                    <p><label for="import-archived-lists">Import archived lists<input type="checkbox" id="import-archived-lists"></label></p>
+                    <p><label for="import-archived-cards">Import archived cards<input type="checkbox" id="import-archived-cards"></label></p>
+                </fieldset>
+                <p><input type="button" id="process" value="Process"></p>
+            </form>
+        </div>
+        <div class="box">
+            <h2>Output: Markdown</h2>
+            <textarea id="markdown" rows="30"></textarea>
+        </div>
+    </div>
+    <script>
+(function(){
+    var trelloTextarea = document.getElementById("trello");
+    var markdownTextarea = document.getElementById("markdown");
+    var kanbanObsidianPluginHeaderFooterCheckbox = document.getElementById('kanban-obsidian-plugin-header-footer');
+
+    var importLabelsAsObsidianTagsCheckbox = document.getElementById('import-labels-as-obsidian-tags');
+    var prefixTagText = document.getElementById('prefix-tag');
+    var suffixTagText = document.getElementById('suffix-tag');
+
+    var importChecklistsCheckbox = document.getElementById('import-checklists');
+    var formatChecklistsForKanbanObsidianPluginCheckbox = document.getElementById('format-checklists-for-kanban-obsidian-plugin');
+
+    var importCommentsCheckbox = document.getElementById('import-comments');
+
+    var importArchivedListsCheckbox = document.getElementById('import-archived-lists');
+    var importArchivedCardsCheckbox = document.getElementById('import-archived-cards');
+
+    function parse() {
+        var trelloJson;
+        var markdown = '';
+
+        var lists = [];
+        var idxLists = 0;
+        var lenLists;
+
+        var mapListIDIdx = {};
+        var listIdxForMap = 0;
+
+        var idxLabels = 0;
+        var lenLabels;
+        var mapLabels = {};
+        var labelsArray = [];
+
+        var idxChecklists = 0;
+        var lenChecklists;
+        var idxChecklistItems = 0;
+        var lenChecklistItems;
+        var itemsChecklist = [];
+        var mapChecklists = {};
+        var checklistsArray = [];
+
+        var idxActions = 0;
+        var lenActions;
+
+        var idxCards = 0;
+        var lenCards;
+
+        var idxComments = 0;
+        var lenComments;
+        var mapComments = {};
+        var commentsArray = [];
+
+        var titleHighlighted = "";
+        var labelsString = "";
+        var commentsString = "";
+        var checklistsJoinCaracter = (formatChecklistsForKanbanObsidianPluginCheckbox.checked) ? "<br>" : "\n    ";
+
+        // region parse json
+        try {
+            trelloJson = JSON.parse(trelloTextarea.value);
+        } catch(e) {
+            return;
+        }
+
+        if (trelloJson["lists"] === undefined) {
+            return;
+        }
+        // endregion
+
+        // region labels
+        if (importLabelsAsObsidianTagsCheckbox.checked && trelloJson["labels"] !== undefined) {
+            for (lenLabels = trelloJson.labels.length; idxLabels < lenLabels; ++idxLabels) {
+                mapLabels[trelloJson.labels[idxLabels].id] = ('#' + (prefixTagText.value) + (trelloJson.labels[idxLabels].name !== '' ? trelloJson.labels[idxLabels].name : trelloJson.labels[idxLabels].color) + (suffixTagText.value)).replaceAll(/ /g, "-");
+            }
+        }
+        // endregion
+
+        // region checklists
+        if (importChecklistsCheckbox.checked && trelloJson["checklists"] !== undefined) {
+            for (lenChecklists = trelloJson.checklists.length; idxChecklists < lenChecklists; ++idxChecklists) {
+                itemsChecklist = [];
+
+                for(idxChecklistItems = 0, lenChecklistItems = trelloJson.checklists[idxChecklists].checkItems.length; idxChecklistItems < lenChecklistItems; ++idxChecklistItems) {
+                    itemsChecklist.push({
+                       name: trelloJson.checklists[idxChecklists].checkItems[idxChecklistItems].name,
+                       complete: trelloJson.checklists[idxChecklists].checkItems[idxChecklistItems].state === "complete",
+                       pos: trelloJson.checklists[idxChecklists].checkItems[idxChecklistItems].pos
+                    });
+                }
+
+                itemsChecklist.sort(function(a, b) {
+                   return a.pos - b.pos;
+                });
+
+                mapChecklists[trelloJson.checklists[idxChecklists].id] = {name: trelloJson.checklists[idxChecklists].name, items:itemsChecklist, pos: trelloJson.checklists[idxChecklists].pos};
+            }
+        }
+        // endregion
+
+        // region comments
+        if (importCommentsCheckbox.checked && trelloJson["actions"] !== undefined) {
+            for (lenActions = trelloJson.actions.length; idxActions < lenActions; ++idxActions) {
+                if (trelloJson.actions[idxActions].type === "commentCard") {
+                    if (mapComments[trelloJson.actions[idxActions].data.card.id] === undefined) {
+                        mapComments[trelloJson.actions[idxActions].data.card.id] = [];
+                    }
+
+                    mapComments[trelloJson.actions[idxActions].data.card.id].push("**Comment from " + trelloJson.actions[idxActions].memberCreator.fullName + ":**<br>" + trelloJson.actions[idxActions].data.text);
+                }
+            }
+        }
+        // endregion
+
+        // region obsidan header
+        if (kanbanObsidianPluginHeaderFooterCheckbox.checked) {
+            markdown+="---" + "\n\n";
+            markdown+="kanban-plugin: basic" + "\n\n";
+            markdown+="---" + "\n\n";
+        }
+        // endregion
+
+        // region list
+        for (lenLists = trelloJson.lists.length; idxLists < lenLists; ++idxLists) {
+            if (trelloJson.lists[idxLists].name.trim() === "") {
+                continue;
+            }
+
+            if (!importArchivedListsCheckbox.checked && trelloJson.lists[idxLists].closed) {
+                continue;
+            }
+
+            lists.push({name: trelloJson.lists[idxLists].name.trim(), cards:[]});
+            mapListIDIdx[trelloJson.lists[idxLists].id] = listIdxForMap;
+            listIdxForMap++;
+        }
+        // endregion
+
+        // region cards + labels + checklists
+        if (trelloJson["cards"] !== undefined) {
+            for (lenCards = trelloJson.cards.length; idxCards < lenCards; ++idxCards) {
+                if (trelloJson.cards[idxCards].name.trim() === "") {
+                    continue;
+                }
+
+                if (!importArchivedCardsCheckbox.checked && trelloJson.cards[idxCards].closed) {
+                    continue;
+                }
+
+                if (lists[mapListIDIdx[trelloJson.cards[idxCards].idList]] === undefined) {
+                    continue;
+                }
+
+                labelsArray = [];
+                if (importLabelsAsObsidianTagsCheckbox.checked) {
+                    for (idxLabels = 0, lenLabels = trelloJson.cards[idxCards].labels.length; idxLabels < lenLabels; ++idxLabels) {
+                        labelsArray.push(mapLabels[trelloJson.cards[idxCards].labels[idxLabels].id]);
+                    }
+                }
+
+                checklistsArray = [];
+                if (importChecklistsCheckbox.checked) {
+                    for (idxChecklists = 0, lenChecklists = trelloJson.cards[idxCards].idChecklists.length; idxChecklists < lenChecklists; ++idxChecklists) {
+                        checklistsArray.push(mapChecklists[trelloJson.cards[idxCards].idChecklists[idxChecklists]]);
+                    }
+                }
+                checklistsArray.sort(function(a, b) {
+                    return a.pos - b.pos;
+                });
+
+                commentsArray = [];
+                if (mapComments[trelloJson.cards[idxCards].id] !== undefined) {
+                    for (idxComments = 0, lenComments = mapComments[trelloJson.cards[idxCards].id].length; idxComments < lenComments; ++idxComments) {
+                        commentsArray.push("<br>---<br>" + mapComments[trelloJson.cards[idxCards].id][idxComments].replaceAll(/\n/g, "<br>"));
+                    }
+                }
+
+                lists[mapListIDIdx[trelloJson.cards[idxCards].idList]].cards.push({
+                    name: trelloJson.cards[idxCards].name.trim(),
+                    description: trelloJson.cards[idxCards].desc.trim(),
+                    labels: labelsArray,
+                    checklists: checklistsArray,
+                    comments: commentsArray,
+                });
+            }
+        }
+        // endregion
+
+        // region generate markdown
+        for(idxLists = 0, lenLists = lists.length; idxLists < lenLists; ++idxLists) {
+            // new list
+            markdown+= "## " + lists[idxLists].name + "\n\n";
+
+            // cards
+            for(idxCards = 0, lenCards = lists[idxLists].cards.length; idxCards < lenCards; ++idxCards) {
+                if (lists[idxLists].cards[idxCards].description === "") {
+                    titleHighlighted = "";
+                } else {
+                    titleHighlighted = "**";
+                }
+
+                // card title
+                markdown+= "- [ ] " + titleHighlighted + lists[idxLists].cards[idxCards].name + titleHighlighted;
+
+                // card description
+                if (lists[idxLists].cards[idxCards].description !== "") {
+                    markdown+= "<br>" + lists[idxLists].cards[idxCards].description.replaceAll(/\n/g, "<br>");
+                }
+
+                // card checklists
+                for (idxChecklists = 0, lenChecklists = lists[idxLists].cards[idxCards].checklists.length; idxChecklists < lenChecklists; ++idxChecklists) {
+                    if (idxChecklists === 0 && formatChecklistsForKanbanObsidianPluginCheckbox.checked === false) {
+                        markdown+= '  ';
+                    }
+
+                    if (formatChecklistsForKanbanObsidianPluginCheckbox.checked) {
+                        markdown+= checklistsJoinCaracter + "**" + lists[idxLists].cards[idxCards].checklists[idxChecklists].name + "**";
+                    } else {
+                        markdown+= "\n **" + lists[idxLists].cards[idxCards].checklists[idxChecklists].name + "**";
+                    }
+
+                    for (idxChecklistItems = 0, lenChecklistItems = lists[idxLists].cards[idxCards].checklists[idxChecklists].items.length; idxChecklistItems < lenChecklistItems; ++idxChecklistItems) {
+                        if (lists[idxLists].cards[idxCards].checklists[idxChecklists].items[idxChecklistItems].complete) {
+                            markdown+= checklistsJoinCaracter + "- [X] " + lists[idxLists].cards[idxCards].checklists[idxChecklists].items[idxChecklistItems].name;
+                        } else {
+                            markdown+= checklistsJoinCaracter + "- [ ] " + lists[idxLists].cards[idxCards].checklists[idxChecklists].items[idxChecklistItems].name;
+                        }
+                    }
+
+                    if (idxChecklists + 1 < lenChecklists) {
+                        markdown+= checklistsJoinCaracter;
+                    }
+                }
+
+                // comments
+                commentsString = lists[idxLists].cards[idxCards].comments.join('<br>').trim();
+                if (commentsString !== '') {
+                    markdown+= "<br>" + commentsString;
+                }
+
+                // card labels
+                labelsString = lists[idxLists].cards[idxCards].labels.join(' ').trim();
+                if (labelsString !== '') {
+                    markdown+= "<br>" + labelsString;
+                }
+
+                markdown+="\n";
+            }
+            markdown+="\n";
+        }
+        // endregion
+
+        // region obsidan footer
+        if (kanbanObsidianPluginHeaderFooterCheckbox.checked) {
+            markdown+="\n";
+            markdown+="%% kanban:settings" + "\n";
+            markdown+="```" + "\n";
+            markdown+="{\"kanban-plugin\":\"basic\"}" + "\n";
+            markdown+="```" + "\n";
+            markdown+="%%" + "\n";
+        }
+        // endregion
+
+        markdownTextarea.value = markdown;
+    }
+
+    document.getElementById('process').addEventListener('click', parse);
+}());
+    </script>
+</body>
+</html>
