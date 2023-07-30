@@ -1,6 +1,7 @@
 # Trello JSON to Markdown
 Convert trello JSON export file in Markdown.  
-Has options for Obsidian and the Kanban Obsidian Plugin.
+Has options for Obsidian, [Kanban Obsidian Plugin](https://github.com/mgmeyers/obsidian-kanban) and [Projects Obsidian Plugin](https://github.com/marcusolsson/obsidian-projects).  
+Use [JSZip v3.10.1](https://github.com/Stuk/jszip) when generating zip file for Projects Obsidian Plugin.
 
 ## How to use?
 
@@ -27,10 +28,11 @@ Has options for Obsidian and the Kanban Obsidian Plugin.
   - [X] description
   - [X] checklists
   - [X] comments
-- [X] add Kanban Obsidian Plugin header and footer
+- [X] add Kanban Obsidian Plugin
 - [X] labels as tags for Obsidian
   - [X] optional
   - [X] add prefix and or suffix
 - [X] include archived
   - [X] lists
   - [X] cards
+- [X] add Projects Obsidian Plugin
