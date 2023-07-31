@@ -316,6 +316,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
                     }
                     fileContent+='status: ' + lists[idxLists].name + "\n";
                     fileContent+='tags: [' + lists[idxLists].cards[idxCards].labels.join(',').trim().replaceAll('#', '') + ']' + "\n";
+                    fileContent+='description: ' + lists[idxLists].cards[idxCards].description.replaceAll(':', '').split('\n')[0] + "\n";
                     fileContent+='---' + "\n\n";
 
                     // card name (because file name can be incorrect due to forbidden symbols)
