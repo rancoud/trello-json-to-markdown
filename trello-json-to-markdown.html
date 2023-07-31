@@ -234,7 +234,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
                 continue;
             }
 
-            lists.push({name: trelloJson.lists[idxLists].name.trim(), cards:[]});
+            lists.push({name: trelloJson.lists[idxLists].name.trim(), cards:[], pos: trelloJson.lists[idxLists].pos});
             mapListIDIdx[trelloJson.lists[idxLists].id] = listIdxForMap;
             listIdxForMap++;
         }
@@ -287,6 +287,7 @@ https://github.com/nodeca/pako/blob/main/LICENSE
                     comments: commentsArray,
                     due: formatDate(trelloJson.cards[idxCards].due).substring(0,10),
                     closed: (trelloJson.cards[idxCards].closed) ? formatDate(trelloJson.cards[idxCards].dateLastActivity).substring(0,10): null,
+                    pos: trelloJson.cards[idxCards].pos
                 });
             }
         }
@@ -317,6 +318,8 @@ https://github.com/nodeca/pako/blob/main/LICENSE
                     fileContent+='status: ' + lists[idxLists].name + "\n";
                     fileContent+='tags: [' + lists[idxLists].cards[idxCards].labels.join(',').trim().replaceAll('#', '') + ']' + "\n";
                     fileContent+='description: ' + lists[idxLists].cards[idxCards].description.replaceAll(':', '').split('\n')[0] + "\n";
+                    fileContent+='list-order: ' + lists[idxLists].pos + "\n";
+                    fileContent+='card-order: ' + lists[idxLists].cards[idxCards].pos + "\n";
                     fileContent+='---' + "\n\n";
 
                     // card name (because file name can be incorrect due to forbidden symbols)
